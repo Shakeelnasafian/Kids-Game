@@ -38,11 +38,34 @@ async function decodeAudioData(
   return buffer;
 }
 
-export const speakWord = async (text: string, voice: 'Kore' | 'Puck' = 'Kore') => {
+type SpeakOptions = {
+  voice?: 'Kore' | 'Puck';
+  slow?: boolean;
+};
+
+const speakWithSpeechSynthesis = (text: string, slow: boolean) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = slow ? 0.8 : 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+};
+
+export const speakWord = async (text: string, options: SpeakOptions = {}) => {
+  const { voice = 'Kore', slow = false } = options;
+  if (!text || !text.trim()) return;
+
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+  if (!apiKey) {
+    speakWithSpeechSynthesis(text, slow);
+    return;
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Say clearly: ${text}` }] }],
+      contents: [{ parts: [{ text: slow ? `Say slowly and clearly: ${text}` : `Say clearly: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -70,5 +93,6 @@ export const speakWord = async (text: string, voice: 'Kore' | 'Puck' = 'Kore') =
     source.start();
   } catch (error) {
     console.error("TTS Error:", error);
+    speakWithSpeechSynthesis(text, slow);
   }
 };

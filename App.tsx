@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VOCABULARY } from './data/vocabulary';
 import { Category, Word, UserStats, GameMode, Language } from './types';
 import { GameMatch } from './components/GameMatch';
@@ -26,17 +26,35 @@ const App: React.FC = () => {
   const [gameMode, setGameMode] = useState<GameMode>(GameMode.MATCH);
   const [wordIndex, setWordIndex] = useState(0);
   const [gameWords, setGameWords] = useState<Word[]>([]);
-  const [language, setLanguage] = useState<Language>(Language.EN);
+  const [supportMode, setSupportMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('kpk_kids_support_mode');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('kpk_kids_language');
+    return saved === Language.UR || saved === Language.PS ? saved : Language.EN;
+  });
 
   useEffect(() => {
     localStorage.setItem('kpk_kids_stats', JSON.stringify(stats));
   }, [stats]);
+  
+  useEffect(() => {
+    localStorage.setItem('kpk_kids_support_mode', JSON.stringify(supportMode));
+  }, [supportMode]);
+
+  useEffect(() => {
+    localStorage.setItem('kpk_kids_language', language);
+  }, [language]);
+
+  const sessionLength = supportMode ? 6 : 10;
+  const optionCount = supportMode ? 2 : 4;
 
   const startLevel = (cat: Category, mode: GameMode) => {
     gameAudio.playClick();
     const filtered = VOCABULARY.filter(w => w.category === cat);
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-    setGameWords(shuffled.slice(0, 10)); // Limit per session
+    setGameWords(shuffled.slice(0, sessionLength)); // Limit per session
     setCurrentCategory(cat);
     setGameMode(mode);
     setWordIndex(0);
@@ -66,9 +84,10 @@ const App: React.FC = () => {
     // Feedback provided in components
   };
 
-  const getOptions = (correctWord: Word) => {
+  const getOptions = (correctWord: Word, count = 4) => {
     const others = VOCABULARY.filter(w => w.id !== correctWord.id).sort(() => Math.random() - 0.5);
-    return [correctWord, others[0], others[1], others[2]].sort(() => Math.random() - 0.5);
+    const needed = Math.max(1, count - 1);
+    return [correctWord, ...others.slice(0, needed)].sort(() => Math.random() - 0.5);
   };
 
   const renderGame = () => {
@@ -77,11 +96,37 @@ const App: React.FC = () => {
 
     switch (gameMode) {
       case GameMode.MATCH:
-        return <GameMatch word={currentWord} options={getOptions(currentWord)} onCorrect={handleCorrect} onWrong={handleWrong} />;
+        return (
+          <GameMatch
+            word={currentWord}
+            options={getOptions(currentWord, optionCount)}
+            onCorrect={handleCorrect}
+            onWrong={handleWrong}
+            language={language}
+            supportMode={supportMode}
+          />
+        );
       case GameMode.SPELL:
-        return <GameSpell word={currentWord} onCorrect={handleCorrect} onWrong={handleWrong} />;
+        return (
+          <GameSpell
+            word={currentWord}
+            onCorrect={handleCorrect}
+            onWrong={handleWrong}
+            language={language}
+            supportMode={supportMode}
+          />
+        );
       case GameMode.LISTEN:
-        return <GameListen word={currentWord} options={getOptions(currentWord).slice(0, 4)} onCorrect={handleCorrect} onWrong={handleWrong} />;
+        return (
+          <GameListen
+            word={currentWord}
+            options={getOptions(currentWord, optionCount)}
+            onCorrect={handleCorrect}
+            onWrong={handleWrong}
+            language={language}
+            supportMode={supportMode}
+          />
+        );
     }
   };
 
@@ -99,12 +144,20 @@ const App: React.FC = () => {
           <span className="text-2xl">⭐</span>
           <span className="font-bold text-xl text-green-700">{stats.stars}</span>
         </div>
-        <button 
-          onClick={() => { gameAudio.playClick(); setView('HOME'); }}
-          className="bg-white/80 p-3 rounded-full shadow-lg border-2 border-slate-100 hover:scale-110 active:scale-95 transition-all"
-        >
-          <span className="text-3xl">🏠</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => { gameAudio.playClick(); setSupportMode(prev => !prev); }}
+            className={`px-4 py-2 rounded-full text-xs font-black shadow-lg border-2 transition-all ${supportMode ? 'bg-green-500 text-white border-green-600' : 'bg-white/80 text-slate-500 border-slate-100'}`}
+          >
+            SUPPORT: {supportMode ? 'ON' : 'OFF'}
+          </button>
+          <button 
+            onClick={() => { gameAudio.playClick(); setView('HOME'); }}
+            className="bg-white/80 p-3 rounded-full shadow-lg border-2 border-slate-100 hover:scale-110 active:scale-95 transition-all"
+          >
+            <span className="text-3xl">🏠</span>
+          </button>
+        </div>
       </header>
 
       {/* CONTENT AREA */}
@@ -129,6 +182,22 @@ const App: React.FC = () => {
                 <span>LET'S GO!</span>
                 <span className="text-5xl animate-bounce">🚀</span>
               </button>
+
+              <div className="bg-white p-5 rounded-3xl shadow-xl border-b-8 border-slate-100">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Learning Support</p>
+                    <p className="text-lg font-black text-slate-700">Slow Mode</p>
+                    <p className="text-xs text-slate-400">Fewer choices, extra hints, slow audio.</p>
+                  </div>
+                  <button
+                    onClick={() => { gameAudio.playClick(); setSupportMode(prev => !prev); }}
+                    className={`px-5 py-3 rounded-2xl text-sm font-black shadow-md border-2 transition-all ${supportMode ? 'bg-green-500 text-white border-green-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}
+                  >
+                    {supportMode ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <button 
@@ -176,6 +245,12 @@ const App: React.FC = () => {
                       >
                         SPELL
                       </button>
+                      <button 
+                        onClick={() => startLevel(cat, GameMode.LISTEN)}
+                        className="w-full py-3 bg-teal-500 text-white rounded-2xl font-black text-sm shadow-md hover:bg-teal-600 transition"
+                      >
+                        LISTEN
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -186,6 +261,11 @@ const App: React.FC = () => {
 
         {view === 'GAME' && (
           <div className="flex-1 flex flex-col">
+            {supportMode && (
+              <div className="mb-4 rounded-2xl bg-white/80 border border-green-200 p-3 text-sm font-semibold text-green-700 shadow-sm">
+                Learning Support is ON: fewer choices, extra hints, slow audio.
+              </div>
+            )}
             <div className="flex items-center space-x-4 mb-8">
               <div className="flex-1 h-6 bg-white rounded-full overflow-hidden shadow-inner border-2 border-slate-100 p-1">
                 <div 
