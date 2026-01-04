@@ -1,0 +1,7 @@
+{
+  "name": "KPK Kids Vocabulary Quest",
+  "description": "An interactive vocabulary learning game for children in Pakistan, featuring English, Urdu, and Pashto support with gamified learning tracks.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

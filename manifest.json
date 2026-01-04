@@ -1,0 +1,16 @@
+
+{
+  "name": "KPK Kids Quest",
+  "short_name": "KidsQuest",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0fdf4",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3024/3024310.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
